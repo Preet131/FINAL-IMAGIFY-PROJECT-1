@@ -1,35 +1,78 @@
-const mailgun = require('mailgun-js');
+import formData from 'form-data';
+import Mailgun from 'mailgun.js';
 
-const mg = mailgun({
-    apiKey: process.env.MAILGUN_API_KEY,
-    domain: process.env.MAILGUN_DOMAIN
+// const mailgun = new Mailgun(formData);
+// const mg = mailgun.client({
+//   username: 'api',
+//   key: process.env.MAILGUN_API_KEY,
+// });
+// import formData from 'form-data';
+// import Mailgun from 'mailgun.js';
+
+// if (!process.env.MAILGUN_API_KEY) {
+//     console.warn('Warning: MAILGUN_API_KEY is not set in environment variables');
+// }
+
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+    username: 'api',
+    key: process.env.MAILGUN_API_KEY || 'dummy_key', // Fallback to prevent crash
 });
 
-const sendPasswordResetEmail = async (email, resetToken) => {
-    const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    
-    const data = {
-        from: 'Imagify <noreply@imagify.com>',
-        to: email,
-        subject: 'Password Reset Request',
-        html: `
-            <h1>Password Reset Request</h1>
-            <p>You have requested to reset your password. Click the link below to reset it:</p>
-            <a href="${resetLink}">Reset Password</a>
-            <p>This link will expire in 1 hour.</p>
-            <p>If you didn't request this, please ignore this email.</p>
-        `
-    };
+export const sendPasswordResetEmail = async (email, resetToken) => {
+    if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+        console.error('Mailgun configuration is incomplete');
+        return false;
+    }
 
     try {
-        await mg.messages().send(data);
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+        
+        const messageData = {
+            from: 'Imagify <noreply@yourdomain.com>',
+            to: email,
+            subject: 'Password Reset Request',
+            text: `You requested a password reset. Please go to this link to reset your password: ${resetUrl}`,
+            html: `
+                <h1>Password Reset Request</h1>
+                <p>You requested a password reset.</p>
+                <p>Please click the link below to reset your password:</p>
+                <a href="${resetUrl}">Reset Password</a>
+                <p>If you didn't request this, please ignore this email.</p>
+                <p>This link will expire in 1 hour.</p>
+            `
+        };
+
+        await mg.messages.create(process.env.MAILGUN_DOMAIN, messageData);
         return true;
     } catch (error) {
-        console.error('Mailgun Error:', error);
+        console.error('Send Email Error:', error);
         return false;
     }
 };
+// export const sendPasswordResetEmail = async (email, resetToken) => {
+//   try {
+//     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    
+//     const messageData = {
+//       from: 'Imagify <noreply@yourdomain.com>',
+//       to: email,
+//       subject: 'Password Reset Request',
+//       text: `You requested a password reset. Please go to this link to reset your password: ${resetUrl}`,
+//       html: `
+//         <h1>Password Reset Request</h1>
+//         <p>You requested a password reset.</p>
+//         <p>Please click the link below to reset your password:</p>
+//         <a href="${resetUrl}">Reset Password</a>
+//         <p>If you didn't request this, please ignore this email.</p>
+//         <p>This link will expire in 1 hour.</p>
+//       `
+//     };
 
-module.exports = {
-    sendPasswordResetEmail
-}; 
+//     await mg.messages.create(process.env.MAILGUN_DOMAIN, messageData);
+//     return true;
+//   } catch (error) {
+//     console.error('Send Email Error:', error);
+//     return false;
+//   }
+// };

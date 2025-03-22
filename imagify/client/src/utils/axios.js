@@ -30,6 +30,9 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Log the full error object for debugging
+        console.error('Full error object:', error);
+        
         if (error.code === 'ERR_NETWORK') {
             console.error('Network Error - Server might be down');
             toast.error('Server connection failed. Please check if the server is running and try again.');
@@ -39,6 +42,9 @@ instance.interceptors.response.use(
         } else if (error.response?.status === 401) {
             localStorage.removeItem('token');
             window.location.href = '/login';
+        } else if (error.response?.status === 500) {
+            console.error('Server Error:', error.response?.data);
+            toast.error('Server error occurred. Please try again later.');
         } else if (error.response?.status === 0) {
             console.error('CORS Error - Server might be down or CORS not configured');
             toast.error('Unable to connect to server. Please check if the server is running.');

@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken'
 import stripe from "stripe";
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import { sendPasswordResetEmail } from '../utils/mailgun';
+import { sendPasswordResetEmail } from '../utils/mailgun.js';
 
 // API to register user
 const registerUser = async (req, res) => {
@@ -364,10 +364,62 @@ const verifyStripe = async (req, res) => {
     }
 }
 
-// Forgot Password
+// // Forgot Password
+// const forgotPassword = async (req, res) => {
+//     try {
+//         const { email } = req.body;
+//         const user = await userModel.findOne({ email });
+
+//         if (!user) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User not found'
+//             });
+//         }
+
+//         // Generate reset token
+//         const resetToken = crypto.randomBytes(32).toString('hex');
+//         user.resetPasswordToken = crypto
+//             .createHash('sha256')
+//             .update(resetToken)
+//             .digest('hex');
+//         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+//         await user.save();
+
+//         // Send reset email
+//         const emailSent = await sendPasswordResetEmail(email, resetToken);
+
+//         if (!emailSent) {
+//             return res.status(500).json({
+//                 success: false,
+//                 message: 'Failed to send reset email'
+//             });
+//         }
+
+//         res.json({
+//             success: true,
+//             message: 'Password reset email sent'
+//         });
+//     } catch (error) {
+//         console.error('Forgot Password Error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Error processing password reset request'
+//         });
+//     }
+// };
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
         const user = await userModel.findOne({ email });
 
         if (!user) {
@@ -379,37 +431,61 @@ const forgotPassword = async (req, res) => {
 
         // Generate reset token
         const resetToken = crypto.randomBytes(32).toString('hex');
-        user.resetPasswordToken = crypto
+        
+        // Hash token before saving to database
+        const hashedToken = crypto
             .createHash('sha256')
             .update(resetToken)
             .digest('hex');
+
+        // Save the token to user document
+        user.resetPasswordToken = hashedToken;
         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
 
         await user.save();
 
-        // Send reset email
-        const emailSent = await sendPasswordResetEmail(email, resetToken);
+        // For development/testing, log the reset token
+        console.log('Reset Token:', resetToken);
 
-        if (!emailSent) {
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to send reset email'
+        try {
+            // Send reset email
+            const emailSent = await sendPasswordResetEmail(email, resetToken);
+            
+            if (!emailSent) {
+                // If email fails, still save the token but notify the user
+                return res.status(200).json({
+                    success: true,
+                    message: 'Reset token generated but email delivery failed. Please contact support.',
+                    // Only include token in development
+                    ...(process.env.NODE_ENV === 'development' && { resetToken })
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Password reset email sent successfully'
+            });
+        } catch (emailError) {
+            console.error('Email sending error:', emailError);
+            
+            // If email fails, still return success but with a warning
+            res.status(200).json({
+                success: true,
+                message: 'Reset token generated but email delivery failed. Please contact support.',
+                // Only include token in development
+                ...(process.env.NODE_ENV === 'development' && { resetToken })
             });
         }
 
-        res.json({
-            success: true,
-            message: 'Password reset email sent'
-        });
     } catch (error) {
         console.error('Forgot Password Error:', error);
         res.status(500).json({
             success: false,
-            message: 'Error processing password reset request'
+            message: 'Error processing password reset request',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
-
 // Reset Password
 const resetPassword = async (req, res) => {
     try {

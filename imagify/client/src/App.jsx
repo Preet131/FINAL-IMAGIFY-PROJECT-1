@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Link } from 'react-router-dom'
 
 import Home from './pages/Home'
 import Result from './pages/Result'
@@ -7,6 +7,7 @@ import BuyCredit from './pages/BuyCredit'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ResetPassword from './components/ResetPassword'
+import ForgotPassword from './components/ForgotPassword'
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -29,6 +30,7 @@ const App = () => {
         <Route path='/buy' element={<BuyCredit />} />
         <Route path='/verify' element={<Verify />} />
         <Route path='/reset-password/:token' element={<ResetPassword />} />
+        <Route path='/forgot-password' element={<ForgotPassword />} />
       </Routes>
       <Footer />
     </div>
